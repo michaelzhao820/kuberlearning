@@ -23,6 +23,7 @@ type Worker struct {
 	Name string
 	Queue queue.Queue
 	Db map[uuid.UUID]*task.Task
+	Stats *Stats
 	TaskCount int
 }
 func (w *Worker) GetTasks() []*task.Task {
@@ -34,7 +35,12 @@ func (w *Worker) GetTasks() []*task.Task {
 }
 
 func (w *Worker) CollectStats() {
-    fmt.Println("I will collect stats")
+	for {
+        log.Println("Collecting stats")
+        w.Stats = GetStats()
+        w.Stats.TaskCount = w.TaskCount
+        time.Sleep(15 * time.Second)
+    }
 }
 
 func (w *Worker) AddTask(t task.Task) {
@@ -66,7 +72,7 @@ func (w *Worker) RunTask() task.DockerResult {
 		case task.Completed:
 			result = w.StopTask(taskQueued)
         default:
-            result.Error = errors.New("we should not get here")
+            result.Error = errors.New("failed")
         }
     } else {
         err := fmt.Errorf("invalid transition from %v to %v",
@@ -115,4 +121,5 @@ func (w *Worker) StopTask(t task.Task) task.DockerResult {
 
 	return result	
 }
+
 
