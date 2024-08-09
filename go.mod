@@ -7,6 +7,7 @@ require (
 	github.com/containerd/containerd v1.5.1 // indirect
 	github.com/docker/docker v20.10.6+incompatible
 	github.com/docker/go-connections v0.4.0
+	github.com/go-chi/chi/v5 v5.1.0
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/google/uuid v1.2.0
 	github.com/moby/moby v20.10.6+incompatible
