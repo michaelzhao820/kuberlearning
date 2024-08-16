@@ -17,7 +17,7 @@ func main() {
 	host := os.Getenv("KLEARN_HOST")
 	port, _ := strconv.Atoi(os.Getenv("KLEARN_PORT"))
 
-	fmt.Println("Starting KuberLearn worker")
+	fmt.Println("Starting kuberlearn worker")
 
 	w := worker.Worker{
 		Queue: *queue.New(),
@@ -26,6 +26,7 @@ func main() {
 	api := worker.Api{Address: host, Port: port, Worker: &w}
 
 	go runTasks(&w)
+	go w.CollectStats()
 	api.Start()
 }
 

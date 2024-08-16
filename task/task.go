@@ -35,13 +35,6 @@ type Task struct {
 	FinishTime time.Time
 }
 
-//wrapper around task that allows for transition of states
-type TaskEvent struct {
-	ID uuid.UUID
-	State State
-	Timestamp time.Time
-	Task Task
-}
 
 //Configuration of task (container settings)
 type Config struct {

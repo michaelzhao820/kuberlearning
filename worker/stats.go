@@ -54,7 +54,7 @@ func (s *Stats) CpuUsage() float64 {
     return (float64(total) - float64(idle)) / float64(total)
 }
 
-func GetStats() *Stats {
+func 	GetStats() *Stats {
     return &Stats{
         MemStats:  GetMemoryInfo(),
         DiskStats: GetDiskInfo(),
