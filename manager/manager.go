@@ -3,7 +3,10 @@ package manager
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"kuberlearning/node"
+	"kuberlearning/scheduler"
 	"kuberlearning/task"
 	"kuberlearning/worker"
 	"log"
@@ -28,32 +31,50 @@ type Manager struct {
     WorkerTaskMap map[string][]uuid.UUID // input worker name, get task uuids
     TaskWorkerMap map[uuid.UUID]string //inut tasks uuid, get worker name
     LastWorker int
+    WorkerNodes []*node.Node
+    Scheduler scheduler.Scheduler
 }
 
-func New(workers []string) *Manager {
+func New(workers []string, schedulerType string) *Manager {
     taskDb := make(map[uuid.UUID]*task.Task)
     workerTaskMap := make(map[string][]uuid.UUID)
     taskWorkerMap := make(map[uuid.UUID]string)
-    for worker := range workers {
-    workerTaskMap[workers[worker]] = []uuid.UUID{}
+    var nodes []*node.Node
+    for _,worker := range workers {
+        workerTaskMap[worker] = []uuid.UUID{}
+
+        nAPI := fmt.Sprintf("http://%v", worker)
+        n:= node.NewNode(worker,nAPI,"worker node")
+        nodes = append(nodes,n)
+    }
+    var s scheduler.Scheduler
+    switch (schedulerType){
+        case "roundrobin" :
+            s = &scheduler.RoundRobin{Name : "roundrobin"}
+        default:
+            s = &scheduler.RoundRobin{Name: "roundrobin"}
     }
     return &Manager{
-    Pending: *queue.New(),
-    Workers: workers,
-    TaskDb: taskDb,
-    WorkerTaskMap: workerTaskMap,
-    TaskWorkerMap: taskWorkerMap,
+        Pending: *queue.New(),
+        Workers: workers,
+        TaskDb: taskDb,
+        WorkerTaskMap: workerTaskMap,
+        TaskWorkerMap: taskWorkerMap,
+        WorkerNodes: nodes,
+        Scheduler: s,
     }
 }
 
-func (m *Manager) SelectWorker() string{
-    if m.LastWorker+1 < len(m.Workers){
-        m.LastWorker+=1
-        return m.Workers[m.LastWorker]
-    }else{
-        m.LastWorker = 0
-        return m.Workers[m.LastWorker]
+func (m *Manager) SelectWorker(t task.Task) (*node.Node, error){
+
+    possibleWorkers := m.Scheduler.SelectCanidateNodes(t,m.WorkerNodes)
+    if possibleWorkers == nil {
+        msg := fmt.Sprintf("No available candidates match resource request for task %v", t.ID)
+        err := errors.New(msg)
+        return nil, err
     }
+    scores := m.Scheduler.Score(t,possibleWorkers)
+    return m.Scheduler.Pick(scores,possibleWorkers),nil
 }
 
 func (m *Manager) UpdateTasks() {
@@ -107,17 +128,57 @@ func (m *Manager) ProcessTasks() {
 		time.Sleep(10 * time.Second)
 	}
 }
+
+func (m *Manager) stopTask(worker string, taskID string) {
+	client := &http.Client{}
+	url := fmt.Sprintf("http://%s/tasks/%s", worker, taskID)
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		log.Printf("error creating request to delete task %s: %v", taskID, err)
+		return
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("error connecting to worker at %s: %v", url, err)
+		return
+	}
+
+	if resp.StatusCode != 204 {
+		log.Printf("Error sending request: %v", err)
+		return
+	}
+
+	log.Printf("task %s has been scheduled to be stopped", taskID)
+}
  
 func (m *Manager) SendWork() {
     if m.Pending.Len() > 0 {
-        w:= m.SelectWorker()
 
         e := m.Pending.Dequeue()
         t := e.(task.Task)
         log.Printf("Pulled %v off pending queue\n", t)
+
+        taskWorker, ok := m.TaskWorkerMap[t.ID]
+        if ok {
+            persistedTask := m.TaskDb[t.ID]
+            if t.State == task.Completed && task.ValidStateTransition(persistedTask.State,t.State){
+                m.stopTask(taskWorker,t.ID.String())
+                return
+            }
+            log.Printf("invalid request: existing task %s is in state %v and cannot transition to the completed state", persistedTask.ID.String(), persistedTask.State)
+			return
+        }
+
+        w,err := m.SelectWorker(t)
+        if err != nil {
+            log.Printf("error selecting worker for task %s: %v", t.ID, err)
+			return
+        }
+        log.Printf("[manager] selected worker %s for task %s", w.Name, t.ID)
         
-        m.WorkerTaskMap[w] = append(m.WorkerTaskMap[w],t.ID)
-        m.TaskWorkerMap[t.ID] = w
+        m.WorkerTaskMap[w.Name] = append(m.WorkerTaskMap[w.Name],t.ID)
+        m.TaskWorkerMap[t.ID] = w.Name
         m.TaskDb[t.ID] = &t
 
         data,err := json.Marshal(t)
@@ -125,8 +186,7 @@ func (m *Manager) SendWork() {
         if err != nil {
             log.Printf("Unable to marshal task object: %v.\n", t)
         }
-        url := fmt.Sprintf("http://%s/tasks",w)
-        fmt.Printf("http://%s/tasks",w)
+        url := fmt.Sprintf("http://%s/tasks",w.Name)
         //API call to send task to a worker
         resp, err := http.Post(url, "application/json", bytes.NewBuffer(data))
         if err != nil {
@@ -151,7 +211,7 @@ func (m *Manager) SendWork() {
        
 }
 
-func (m *Manager) GetTasks () []*task.Task{
+func (m *Manager) GetTasks() []*task.Task{
     tasks := []*task.Task{}
     for _,task := range m.TaskDb { 
         tasks = append(tasks, task)

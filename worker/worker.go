@@ -24,7 +24,6 @@ type Worker struct {
 	Queue queue.Queue
 	Db map[uuid.UUID]*task.Task
 	Stats *Stats
-	TaskCount int
 }
 func (w *Worker) GetTasks() []*task.Task {
 	tasks := []*task.Task{}
@@ -38,7 +37,6 @@ func (w *Worker) CollectStats() {
 	for {
         log.Println("Collecting stats")
         w.Stats = GetStats()
-        w.Stats.TaskCount = w.TaskCount
         time.Sleep(15 * time.Second)
     }
 }
