@@ -13,13 +13,13 @@ import (
 )
 
 func main() {
-	whost := os.Getenv("CUBE_WORKER_HOST")
-	wport, _ := strconv.Atoi(os.Getenv("CUBE_WORKER_PORT"))
+	whost := os.Getenv("KLEARN_WORKER_HOST")
+	wport, _ := strconv.Atoi(os.Getenv("KLEARN_WORKER_PORT"))
 
-	mhost := os.Getenv("CUBE_MANAGER_HOST")
-	mport, _ := strconv.Atoi(os.Getenv("CUBE_MANAGER_PORT"))
+	mhost := os.Getenv("KLEARN_MANAGER_HOST")
+	mport, _ := strconv.Atoi(os.Getenv("KLEARN_MANAGER_PORT"))
 
-	fmt.Println("Starting Cube worker")
+	fmt.Println("Starting kuberlearning worker")
 
 	w1 := worker.Worker{
 		Queue: *queue.New(),
@@ -48,7 +48,7 @@ func main() {
 	go w3.RunTasks()
 	go wapi3.Start()
 
-	fmt.Println("Starting Cube manager")
+	fmt.Println("Starting kuberlearning manager")
 
 	workers := []string{
 		fmt.Sprintf("%s:%d", whost, wport),

@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"kuberlearning/task"
+	"kuberlearning/stats"
 )
 
 /*
@@ -23,7 +24,7 @@ type Worker struct {
 	Name string
 	Queue queue.Queue
 	Db map[uuid.UUID]*task.Task
-	Stats *Stats
+	Stats *stats.Stats
 }
 func (w *Worker) GetTasks() []*task.Task {
 	tasks := []*task.Task{}
@@ -36,7 +37,7 @@ func (w *Worker) GetTasks() []*task.Task {
 func (w *Worker) CollectStats() {
 	for {
         log.Println("Collecting stats")
-        w.Stats = GetStats()
+        w.Stats = stats.GetStats()
         time.Sleep(15 * time.Second)
     }
 }
