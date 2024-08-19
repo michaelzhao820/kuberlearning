@@ -55,10 +55,20 @@ func (m *Manager) SelectWorker() string{
         return m.Workers[m.LastWorker]
     }
 }
+
+func (m *Manager) UpdateTasks() {
+	for {
+		log.Println("Checking for task updates from workers")
+		m.updateTasks()
+		log.Println("Task updates completed")
+		log.Println("Sleeping for 15 seconds")
+		time.Sleep(15 * time.Second)
+	}
+}
  
 
 // Getting stat updates from the workers
-func (m *Manager) UpdateTasks() {
+func (m *Manager) updateTasks() {
     for _, worker := range m.Workers{
         log.Printf("Checking worker %v for task updates", worker)
         url := fmt.Sprintf("http://%s/tasks",worker)
@@ -108,8 +118,6 @@ func (m *Manager) SendWork() {
         
         m.WorkerTaskMap[w] = append(m.WorkerTaskMap[w],t.ID)
         m.TaskWorkerMap[t.ID] = w
-
-        t.State = task.Scheduled
         m.TaskDb[t.ID] = &t
 
         data,err := json.Marshal(t)
@@ -118,6 +126,7 @@ func (m *Manager) SendWork() {
             log.Printf("Unable to marshal task object: %v.\n", t)
         }
         url := fmt.Sprintf("http://%s/tasks",w)
+        fmt.Printf("http://%s/tasks",w)
         //API call to send task to a worker
         resp, err := http.Post(url, "application/json", bytes.NewBuffer(data))
         if err != nil {

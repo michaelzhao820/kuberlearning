@@ -12,8 +12,8 @@ import (
 )
 
 func main() {
-	whost := os.Getenv("KLEARN_HOST")
-	wport, _ := strconv.Atoi(os.Getenv("KLEARN_PORT"))
+	whost := os.Getenv("KLEARN_WORKER_HOST")
+	wport, _ := strconv.Atoi(os.Getenv("KLEARN_WORKER_PORT"))
 
 	mhost := os.Getenv("KLEARN_MANAGER_HOST")
  	mport, _ := strconv.Atoi(os.Getenv("KLEARN_MANAGER_PORT"))
@@ -36,8 +36,8 @@ func main() {
 	m:= manager.New(workers)
 	mapi := manager.Api{Address: mhost, Port: mport, Manager: m}
 
-	m.ProcessTasks()
-	m.UpdateTasks()
+	go m.ProcessTasks()
+	go m.UpdateTasks()
 
 	mapi.Start()
 }
