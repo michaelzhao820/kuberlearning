@@ -8,6 +8,7 @@ import (
 	"kuberlearning/worker"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/golang-collections/collections/queue"
 	"github.com/google/uuid"
@@ -59,6 +60,7 @@ func (m *Manager) SelectWorker() string{
 // Getting stat updates from the workers
 func (m *Manager) UpdateTasks() {
     for _, worker := range m.Workers{
+        log.Printf("Checking worker %v for task updates", worker)
         url := fmt.Sprintf("http://%s/tasks",worker)
         resp, err := http.Get(url)
         if err != nil {
@@ -85,6 +87,15 @@ func (m *Manager) UpdateTasks() {
             m.TaskDb[task.ID].ContainerID = task.ContainerID
         }
     }
+}
+
+func (m *Manager) ProcessTasks() {
+	for {
+		log.Println("Processing any tasks in the queue")
+		m.SendWork()
+		log.Println("Sleeping for 10 seconds")
+		time.Sleep(10 * time.Second)
+	}
 }
  
 func (m *Manager) SendWork() {
@@ -129,6 +140,14 @@ func (m *Manager) SendWork() {
         log.Println("No work in the queue")
     }
        
+}
+
+func (m *Manager) GetTasks () []*task.Task{
+    tasks := []*task.Task{}
+    for _,task := range m.TaskDb { 
+        tasks = append(tasks, task)
+    }
+    return tasks
 }
 
 func (m *Manager) AddTask(t task.Task) {
