@@ -63,23 +63,20 @@ func (w *Worker) RunTask() task.DockerResult {
         w.Db[taskQueued.ID] = &taskQueued
     }
 
-    var result task.DockerResult
     if task.ValidStateTransition(taskPersisted.State, taskQueued.State) {
 
         switch taskQueued.State {
         case task.Scheduled:
-           result =  w.StartTask(taskQueued)
+           return  w.StartTask(taskQueued)
 		case task.Completed:
-			result = w.StopTask(taskQueued)
+			return w.StopTask(taskQueued)
         default:
-            result.Error = errors.New("failed")
+            return task.DockerResult{Error : errors.New("failed")}
         }
     } else {
-        err := fmt.Errorf("invalid transition from %v to %v",
-            taskPersisted.State, taskQueued.State)
-        result.Error = err
+        return task.DockerResult{Error :fmt.Errorf("invalid transition from %v to %v",
+		taskPersisted.State, taskQueued.State)} 
     }
-    return result
 }
 
  

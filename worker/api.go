@@ -15,7 +15,7 @@ type ErrResponse struct {
 /*
 Address and Port define local IP address
 of where API runs
-Worker serves as reference that this API wraps
+Worker serves as reference that this API serves
 */
 type Api struct {
 	Address string
